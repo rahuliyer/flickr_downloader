@@ -6,13 +6,18 @@ import json
 import sys
 import os
 
+from workqueue import WorkQueue
+
 FLICKR_API_URL = "http://api.flickr.com/services/rest"
-FLICKR_API_KEY = "07a64be7245094731797fe32c3b5dc4e"
+FLICKR_API_KEY = "ad7b7b6be35e8a6acbca6eb897c6dc63"
 
 FLICKR_GETINFO_REQUEST = "flickr.photosets.getInfo"
 FLICKR_LIST_REQUEST = "flickr.photosets.getPhotos"
 FLICKR_GETSIZES_REQUEST = "flickr.photos.getSizes"
 PHOTOS_PER_PAGE = 500
+
+num_downloaded = 0
+num_photos = 0
 
 def createApiRequest(method, args = None):
 	args["method"] = method
@@ -25,6 +30,28 @@ def createApiRequest(method, args = None):
 def usage():
 	print sys.argv[0] + " <photo_set_id> <target directory>"
 	sys.exit(1)
+
+def downloadPhoto(photo_md):
+	global num_downloaded
+
+	filename = photo_dir + "/img_" + photo_md['id'] + ".jpg"
+	if (not os.path.exists(filename)):
+		request = createApiRequest(FLICKR_GETSIZES_REQUEST, {'photo_id':photo_md['id']})
+		handler = urllib2.urlopen(request)
+		size_response = json.loads(handler.read())
+
+		for size_md in size_response['sizes']['size']:
+			if size_md['label'] == 'Original':
+				request = urllib2.Request(size_md['source']);
+				handler = urllib2.urlopen(request)
+				f = open(filename + ".part", "w")
+				f.write(handler.read())
+				f.close()
+				os.rename(filename + ".part", filename)
+		
+	num_downloaded += 1
+	print "Downloaded " + str(num_downloaded) + "/" + str(num_photos)
+
 
 if len(sys.argv) != 3:
 	usage();
@@ -54,34 +81,23 @@ except OSError:
 print "Downloading " + str(num_photos) + " photos from album " + album_name
 
 num_pages = num_photos / PHOTOS_PER_PAGE + 1
-page = 0
-num_downloaded = 0
+page = 1
+wq = WorkQueue(downloadPhoto)
 
-while page < num_pages:
-	page += 1
-
-	request = createApiRequest(FLICKR_LIST_REQUEST, {'photoset_id':photo_set_id})
+while True:
+	request = createApiRequest(FLICKR_LIST_REQUEST, {'photoset_id':photo_set_id, 'page':page})
 
 	handler = urllib2.urlopen(request)  
 	response = json.loads(handler.read())
 
 	for photo_md in response['photoset']['photo']:
-		filename = photo_dir + "/img_" + photo_md['id'] + ".jpg"
-		if (not os.path.exists(filename)):
-			request = createApiRequest(FLICKR_GETSIZES_REQUEST, {'photo_id':photo_md['id']})
-			handler = urllib2.urlopen(request)
-			size_response = json.loads(handler.read())
+		wq.add(photo_md)
+	
+	page += 1
+	num_pages = response['photoset']['pages']
 
-			for size_md in size_response['sizes']['size']:
-				if size_md['label'] == 'Original':
-					request = urllib2.Request(size_md['source']);
-					handler = urllib2.urlopen(request)
-					f = open(filename + ".part", "w")
-					f.write(handler.read())
-					f.close()
-					os.rename(filename + ".part", filename)
-			
-		num_downloaded += 1
+	if page > num_pages:
+		break
 
-		print "Downloaded " + str(num_downloaded) + "/" + str(num_photos)
-
+wq.done()
+print "Done!"
