@@ -36,7 +36,10 @@ def downloadPhoto(photo_md):
 
 	filename = photo_dir + "/img_" + photo_md['id'] + ".jpg"
 	if (not os.path.exists(filename)):
-		request = createApiRequest(FLICKR_GETSIZES_REQUEST, {'photo_id':photo_md['id']})
+		request = createApiRequest(
+			FLICKR_GETSIZES_REQUEST, 
+			{'photo_id':photo_md['id']})
+
 		handler = urllib2.urlopen(request)
 		size_response = json.loads(handler.read())
 
@@ -85,7 +88,9 @@ page = 1
 wq = WorkQueue(downloadPhoto)
 
 while True:
-	request = createApiRequest(FLICKR_LIST_REQUEST, {'photoset_id':photo_set_id, 'page':page})
+	request = createApiRequest(
+		FLICKR_LIST_REQUEST, 
+		{'photoset_id':photo_set_id, 'page':page})
 
 	handler = urllib2.urlopen(request)  
 	response = json.loads(handler.read())
