@@ -9,7 +9,7 @@ import os
 from workqueue import WorkQueue
 
 FLICKR_API_URL = "http://api.flickr.com/services/rest"
-FLICKR_API_KEY = "ad7b7b6be35e8a6acbca6eb897c6dc63"
+FLICKR_API_KEY = "c7daaf5c18291f1e0beb610387a3a53f"
 
 FLICKR_GETINFO_REQUEST = "flickr.photosets.getInfo"
 FLICKR_LIST_REQUEST = "flickr.photosets.getPhotos"
